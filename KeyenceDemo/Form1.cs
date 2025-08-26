@@ -142,49 +142,57 @@ namespace KeyenceDemo
         {
             try
             {
+                // Step 1: เช็คว่าเครื่องพิมพ์ Status เป็น Printable ไหม
+                int inkjetStatusCode = _random.Next(1, 5); // สุ่มสถานะเครื่อง 1-4
+                string currentInkjetStatus = "Printable";
+                switch (inkjetStatusCode)
+                {
+                    case 2: currentInkjetStatus = "Stop"; break;
+                    case 3: currentInkjetStatus = "Not Connect"; break;
+                    case 4: currentInkjetStatus = "Error"; break;
+                }
+
+                if (currentInkjetStatus != "Printable")
+                {
+                    // ถ้าเครื่องไม่พร้อมพิมพ์ ก็แสดงสถานะแล้วจบการทำงานในรอบนี้
+                    printer.StatusText = $"Status: {currentInkjetStatus}";
+                    printer.StatusColor = Color.OrangeRed;
+                    return;
+                }
+
+                // --- ถ้าเครื่อง Printable ถึงจะทำงานต่อ ---
+
                 var foundFile = Directory.GetFiles(printer.InputPath, "*.txt").FirstOrDefault();
                 if (foundFile == null)
                 {
+                    // เครื่องพร้อม แต่ไม่มีไฟล์
                     printer.StatusText = "Status: Waiting for file...";
                     printer.StatusColor = Color.LightBlue;
                     return;
                 }
 
-                // --- เพิ่มส่วนตรวจสอบความสมบูรณ์ของไฟล์ ---
-                if (!IsFileReady(foundFile))
-                {
-                    // ถ้าไฟล์ยังไม่พร้อม (ยังเขียนไม่เสร็จ)
-                    printer.StatusText = $"File busy: {Path.GetFileName(foundFile)}...";
-                    printer.StatusColor = Color.LightYellow;
-                    return; // ข้ามไปก่อน แล้วค่อยกลับมาเช็ครอบหน้า
-                }
-                // ------------------------------------
+                // --- ถ้าเจอไฟล์ ถึงจะทำงานต่อ ---
 
-                // ถ้าไฟล์พร้อมแล้ว ก็เริ่มทำงานตามปกติ
                 string fileName = Path.GetFileName(foundFile);
-
-                // อ่านข้อความจากไฟล์
                 string fileContent = File.ReadAllText(foundFile).Trim();
 
-                // จำลองการส่งข้อมูล (ในโค้ดของคุณคือการสุ่ม)
-                int statusCode = _random.Next(1, 3);
 
-                if (statusCode == 1) // กรณีสำเร็จ
+                // Step 2: เช็คว่าส่งสำเร็จรึเปล่า (จำลองผลลัพธ์)
+                int sendResultCode = _random.Next(1, 3); // สุ่มผลการส่ง 1=สำเร็จ, 2=ล้มเหลว
+
+                if (sendResultCode == 1) // กรณีส่งสำเร็จ
                 {
-                    printer.StatusText = "Success (Code: 1)";
+                    printer.StatusText = "Success (Sent OK)";
                     printer.StatusColor = Color.LightGreen;
-
-                    // เขียน Log ด้วยข้อมูลที่อ่านมา
                     WriteToLog(printer.LogPath, $"SUCCESS | File: {fileName} | IP: {printer.IpAddress} | Text: {fileContent}");
-
-                    // ลบไฟล์ทิ้ง
-                    File.Delete(foundFile);
+                    File.Delete(foundFile); // ลบไฟล์เมื่อส่งสำเร็จเท่านั้น
                 }
-                else // กรณี Error
+                else // กรณีส่งล้มเหลว
                 {
-                    printer.StatusText = "Error (Code: 2)";
+                    printer.StatusText = "Error (Send Failed)";
                     printer.StatusColor = Color.Salmon;
-                    WriteToLog(printer.LogPath, $"ERROR | File: {fileName} | IP: {printer.IpAddress} | Failed to process.");
+                    WriteToLog(printer.LogPath, $"ERROR | File: {fileName} | IP: {printer.IpAddress} | Send command failed.");
+                    // ไม่ลบไฟล์ เพื่อให้โปรแกรมลองส่งใหม่ในรอบถัดไป
                 }
             }
             catch (Exception ex)
@@ -249,26 +257,6 @@ namespace KeyenceDemo
         {
             ToggleControls(false);
             _cts?.Cancel();
-        }
-
-        private bool IsFileReady(string filePath)
-        {
-            try
-            {
-                // ลองเปิดไฟล์ ถ้าไฟล์กำลังถูกเขียนโดยโปรแกรมอื่น บรรทัดนี้จะเกิด Error
-                using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    stream.Close();
-                }
-            }
-            catch (IOException)
-            {
-                // การเกิด IOException หมายความว่าไฟล์ยังไม่พร้อมใช้งาน
-                return false;
-            }
-
-            // ถ้าไม่เกิด Error ใดๆ แสดงว่าไฟล์สมบูรณ์และพร้อมใช้งาน
-            return true;
         }
     }
 }
