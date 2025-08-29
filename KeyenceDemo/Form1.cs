@@ -261,25 +261,5 @@ namespace KeyenceDemo
             ToggleControls(false);
             _cts?.Cancel();
         }
-
-        private bool IsFileReady(string filePath)
-        {
-            try
-            {
-                // ลองเปิดไฟล์ ถ้าไฟล์กำลังถูกเขียนโดยโปรแกรมอื่น บรรทัดนี้จะเกิด Error
-                using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    stream.Close();
-                }
-            }
-            catch (IOException)
-            {
-                // การเกิด IOException หมายความว่าไฟล์ยังไม่พร้อมใช้งาน
-                return false;
-            }
-
-            // ถ้าไม่เกิด Error ใดๆ แสดงว่าไฟล์สมบูรณ์และพร้อมใช้งาน
-            return true;
-        }
     }
 }
